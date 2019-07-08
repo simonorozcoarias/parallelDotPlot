@@ -12,3 +12,7 @@ Note: To install packages on python 3 in this way you could have admin/root acce
 
 Usage: $python3 graphicalAlignment.py -i Sequence1 -a Sequence2 [Options]
    or: $python graphicalAlignment.py -i Sequence1 -a Sequence2 [Options]
+
+To explore the complete options:
+ type: $python3 graphicalAlignment.py -help
+   or: $python graphicalAlignment.py -help
