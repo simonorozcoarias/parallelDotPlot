@@ -16,3 +16,6 @@ Usage: $python3 graphicalAlignment.py -i Sequence1 -a Sequence2 [Options]
 To explore the complete options:
  type: $python3 graphicalAlignment.py -help
    or: $python graphicalAlignment.py -help
+   
+What's New 
+  -The script runs in parallel.
