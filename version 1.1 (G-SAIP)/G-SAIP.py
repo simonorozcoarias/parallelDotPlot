@@ -28,9 +28,6 @@ def printHelp():
     print("      			-F Output image format <string>")
     print("      			-help <Extended information>")
     print("\n")
-    # print("If you require more info about the Parallel Schemes available use \n \n     		")+colored("%s -r" % sys.argv[0],'green')
-    # print("\nFor support contact:")+colored("Leonardo Camargo Forero, M.Sc @ leonardo.camargo@bios.co\n",'green')
-    ##print("\n")
 
 
 def seq2array(file, windowSize):
