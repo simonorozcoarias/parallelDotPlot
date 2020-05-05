@@ -17,7 +17,6 @@ def printHelp():
     print("      			-i <Sequences input file1>")
     print("      			-a <Sequences input file2>")
     print("      			-w WindowSize of paired bases <int> ")
-    print("      			-t Number of threads <int>")
     print("      			-m Score calculation mode <string>")
     print("      			-k K-mer value <int>")
     print("      			-d Image width <int>")
@@ -37,8 +36,8 @@ def seq2array(file, windowSize):
 
     return length, seqArray
 
-def parallelAligmentDNA(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, id, kmer, mode, n, threads):
-    remain = n % threads
+def parallelAligmentDNA(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, id, kmer, mode, n):
+    remain = n % mpi_procs_size
     if id < remain:
         init = id * (seqs_per_procs + 1)
         end = init + seqs_per_procs + 1
@@ -197,21 +196,22 @@ def main():
     start_time = time.time()
 
     ### Parallel process rank assignment
+    global comm, mpi_procs_size, rank, rank_msg
     comm = MPI.COMM_WORLD
-    size = comm.Get_size()
+    mpi_procs_size = comm.Get_size()
     rank = comm.Get_rank()
     rank_msg = '[rank '+str(rank)+' msg]'
     #######################################################################
 
     # Declaramos las variables inicales
-    window, width, height, graph, threads, kmer, mode, size1, size2, option, Filter = None, 1024, 1024, False, 1, 3, -1, 0, 0, None, False
+    window, width, height, graph, kmer, mode, size1, size2, option, Filter = None, 1024, 1024, False, 1, 3, -1, 0, 0, None, False
     joined_file1, joined_file2, name1, name2, image_format, Name, file1, file2, inic1, inic2, fin1, fin2, id1, id2 = '', '', '', '', "png", None, None, None, None, None, None, None, None, None
     try:
-        flags, params = getopt.getopt(sys.argv[1:], "h:i:a:w:d:e:g:t:k:m:f:N:F:")
+        flags, params = getopt.getopt(sys.argv[1:], "h:i:a:w:d:e:g:k:m:f:N:F:")
     except getopt.GetoptError as error:
         print(str(error))
         print(
-            "Usage: %s -i <Sequence input file1> -a <Sequence input file2> -w WindowSize <int> -d <width> -e <height> -o <bool interactive mode> -t num_threads <int> -help <More info>" %
+            "Usage: %s -i <Sequence input file1> -a <Sequence input file2> -w WindowSize <int> -d <width> -e <height> -o <bool interactive mode> -help <More info>" %
             sys.argv[0])
         sys.exit(2)
     for o, a in flags:
@@ -239,8 +239,6 @@ def main():
             else:
                 if rank ==0: print(rank_msg+" Insert True or 1 if you wish run with interactive mode")
                 sys.exit(3)
-        elif o == '-t':
-            threads = int(a)
         elif o == '-m':
             oparallelAligmentDNAption = a.upper()
             if option == 'SLOW':
@@ -328,7 +326,7 @@ def main():
 
         #### MPI parallel reguib
 
-        seqs_per_procs = int(n / threads)
+        seqs_per_procs = int(n / mpi_procs_size)
         end_time = time.time()
         if rank ==0: print(rank_msg+" module 1 time=", end_time - start_time)
         start_time = time.time()
