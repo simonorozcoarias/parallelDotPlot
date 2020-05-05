@@ -80,7 +80,7 @@ def Distance(seq1, seq2, matScore, misScore, k, mode):
             score = 0
     return score
 
-def graphicalAlignment2(width, height, windowSize, name1, name2, graph_flag, result, lengthX, lengthY, threads, kmer, mode, option, Filter, Name, image_format):
+def graphicalAlignment2(width, height, windowSize, name1, name2, graph_flag, result, lengthX, lengthY, kmer, mode, option, Filter, Name, image_format):
 
     if mode == 1:
         maxi = windowSize - kmer
@@ -358,7 +358,7 @@ def main():
         if rank ==0: print(rank_msg+" module 3 time=", end_time - start_time)
         # create images with created score matrix
         start_time = time.time()
-        graphicalAlignment2(width, height, window, name1, name2, graph, result, lengthX, lengthY, threads, kmer, mode, option, Filter, Name, image_format)
+        graphicalAlignment2(width, height, window, name1, name2, graph, result, lengthX, lengthY, kmer, mode, option, Filter, Name, image_format)
         end_time = time.time()
         if rank ==0: print(rank_msg+" module 4 time=", end_time - start_time)
         #deleting joined_files
