@@ -6,8 +6,8 @@ import os
 from Bio import pairwise2
 import getopt
 import time
-import multiprocessing
 from mpi4py import MPI
+import pickle
 
 def printHelp():
     print("\nParallel dot-plot allows to align 2 DNA fasta files in multiple CPU's ")
@@ -36,27 +36,32 @@ def seq2array(file, windowSize):
 
     return length, seqArray
 
-def parallelAligmentDNA(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, id, kmer, mode, n):
+def dna_parallel_alignment(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, kmer, mode, n):
+
+    """
+    Performing DNA alignment in parallel
+    """
+
     remain = n % mpi_procs_size
-    if id < remain:
-        init = id * (seqs_per_procs + 1)
+    if rank < remain:
+        init = rank * (seqs_per_procs + 1)
         end = init + seqs_per_procs + 1
     else:
-        init = id * seqs_per_procs + remain
+        init = rank * seqs_per_procs + remain
         end = init + seqs_per_procs
 
     if strand == 0:  # horizontal
         if end > lengthX:
             end = lengthX
-        resultLocal = [[Distance(seq1Array[i], seq2Array[j], 5, -4, kmer, mode) for j in range(lengthY)] for i in
+        local_result = [[Distance(seq1Array[i], seq2Array[j], 5, -4, kmer, mode) for j in range(lengthY)] for i in
                        range(init, end)]
     else:  # vertical
         if end > lengthY:
             end = lengthY
-        resultLocal = [[Distance(seq1Array[i], seq2Array[j], 5, -4, kmer, mode) for j in range(init, end)] for i in
+        local_result = [[Distance(seq1Array[i], seq2Array[j], 5, -4, kmer, mode) for j in range(init, end)] for i in
                        range(lengthX)]
-    print("process %i done" % id)
-    return resultLocal
+    print(rank_msg+" Done performing alignment")
+    return local_result
 
 def Distance(seq1, seq2, matScore, misScore, k, mode):
     if mode == 0:  # SLOW (Pairwise2 Biopython) -- HIGH detail
@@ -158,10 +163,12 @@ def join_seq(file):
 
     """
     Joining sequence file
+    Each process creates its own files
     """
     name = extract_name(file)
-    archivo = 'joined_' + name + '.fasta'
-    f = open(archivo, 'w')
+    fasta_file = 'joined_' + name +'_'+str(rank)+ '.fasta'
+    # fasta_file = 'joined_' + name + '.fasta'
+    f = open(fasta_file, 'w')
     te = list(SeqIO.parse(file, "fasta"))
     sec, inicio, fin, id, pos_fin = '', [0], [], [], 0
     for tes in te:
@@ -177,7 +184,7 @@ def join_seq(file):
     f.write(">" + name + ":" + str(len(sec)) + "\n")
     f.write(sec)
     f.close()
-    return archivo, name, inicio, fin, id, size
+    return fasta_file, name, inicio, fin, id, size
 
 def extract_name(file):
 
@@ -187,6 +194,27 @@ def extract_name(file):
     base = os.path.basename(file)
     name = os.path.splitext(base)[0]
     return name
+
+def receive_mpi_msg(src=MPI.ANY_SOURCE,t=MPI.ANY_TAG,deserialize = False):
+
+    """
+    Sending MPI messages
+    """
+    data_dict={}
+    status = MPI.Status()
+    data=comm.recv(source=src, tag=t, status=status)
+    if deserialize: data = pickle.loads(data)
+    data_dict['data']=data
+    data_dict['sender']=int(status.Get_source())
+    return data_dict
+
+def send_mpi_msg(destination,data,serialize = False):
+
+    """
+    Sending MPI messages
+    """
+    if serialize: data = pickle.dumps(data)
+    comm.send(data, dest=destination)
 
 def main():
 
@@ -315,50 +343,50 @@ def main():
         lengthX, seq1Array = seq2array(joined_file1, window)
         lengthY, seq2Array = seq2array(joined_file2, window)
         if rank ==0: print(rank_msg+" finished creating seq Array")
-        # creating the multiprocessing environment
         if lengthX > lengthY:
             n = lengthX
             strand = 0
         else:
             n = lengthY
             strand = 1
-
-
-        #### MPI parallel reguib
-
-        seqs_per_procs = int(n / mpi_procs_size)
         end_time = time.time()
         if rank ==0: print(rank_msg+" module 1 time=", end_time - start_time)
+
+        #######################################################################
+        #### MPI parallel region
         start_time = time.time()
-        # execute sequence alignment in multiprocess mode
-        pool = multiprocessing.Pool(processes=threads)
-        localresults = [pool.apply_async(parallelAligmentDNA, args=(
-            lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, x, kmer, mode, n, threads))
-                        for x in range(threads)]
-        # join all partial results in one
-        results = [p.get() for p in localresults]
+        seqs_per_procs = int(n / mpi_procs_size)
+        # execute sequence alignment using MPI
+        local_result = dna_parallel_alignment(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, kmer, mode, n)
+        if rank == 0:
+            local_results_dict = {}
+            for r in range(1,size):
+                data_dict = receive_mpi_msg(deserialize=True)
+                local_results_dict[data_dict['sender']] = data_dict['data']
+            # join all partial results in one
+            results = [local_results_dict[r] for r in sorted(local_results_dict.keys())]
+        else:
+            send_mpi_msg(0,local_result,serialize=True)
         end_time = time.time()
         #######################################################################
 
+        if rank ==0:
+            print(rank_msg+" module 2 time=", end_time - start_time)
+            start_time = time.time()
+            if strand == 0: result = np.row_stack(results) # horizontal
+            else: result = np.column_stack(results) # vertical
+            lengthY = result.shape[1]
+            lengthX = result.shape[0]
+            print(rank_msg+" finished creating matrix")
+            end_time = time.time()
+            print(rank_msg+" module 3 time=", end_time - start_time)
+            # create images with created score matrix
+            start_time = time.time()
+            graphicalAlignment2(width, height, window, name1, name2, graph, result, lengthX, lengthY, kmer, mode, option, Filter, Name, image_format)
+            end_time = time.time()
+            print(rank_msg+" module 4 time=", end_time - start_time)
 
-
-        #print("Result_len", len(results))
-        if rank ==0: print(rank_msg+" module 2 time=", end_time - start_time)
-        start_time = time.time()
-        if strand == 0:  # horizontal
-            result = np.row_stack(results)
-        else:  # vertical
-            result = np.column_stack(results)
-        lengthY = result.shape[1]
-        lengthX = result.shape[0]
-        if rank ==0: print(rank_msg+" finished creating matrix")
-        end_time = time.time()
-        if rank ==0: print(rank_msg+" module 3 time=", end_time - start_time)
-        # create images with created score matrix
-        start_time = time.time()
-        graphicalAlignment2(width, height, window, name1, name2, graph, result, lengthX, lengthY, kmer, mode, option, Filter, Name, image_format)
-        end_time = time.time()
-        if rank ==0: print(rank_msg+" module 4 time=", end_time - start_time)
+        comm.Barrier()
         #deleting joined_files
         if joined_file1 == joined_file2:
             os.remove(joined_file1)
