@@ -4,8 +4,8 @@ from Bio import SeqIO
 import matplotlib.pyplot as plt
 import os
 from Bio import pairwise2
-import getopt
 import time
+from optparse import OptionParser
 from mpi4py import MPI
 import pickle
 
@@ -42,7 +42,7 @@ def dna_parallel_alignment(lengthX, seq1Array, lengthY, seq2Array, seqs_per_proc
     Performing DNA alignment in parallel
     """
 
-    remain = n % mpi_procs_size
+    remain = n % threads
     if rank < remain:
         init = rank * (seqs_per_procs + 1)
         end = init + seqs_per_procs + 1
@@ -224,88 +224,93 @@ def main():
     start_time = time.time()
 
     ### Parallel process rank assignment
-    global comm, mpi_procs_size, rank, rank_msg
+    global comm, threads, rank, rank_msg
     comm = MPI.COMM_WORLD
-    mpi_procs_size = comm.Get_size()
+    threads = comm.Get_size()
     rank = comm.Get_rank()
     rank_msg = '[rank '+str(rank)+' msg]'
     #######################################################################
 
     # Declaramos las variables inicales
-    window, width, height, graph, kmer, mode, size1, size2, option, Filter = None, 1024, 1024, False, 1, 3, -1, 0, 0, None, False
-    joined_file1, joined_file2, name1, name2, image_format, Name, file1, file2, inic1, inic2, fin1, fin2, id1, id2 = '', '', '', '', "png", None, None, None, None, None, None, None, None, None
-    try:
-        flags, params = getopt.getopt(sys.argv[1:], "h:i:a:w:d:e:g:k:m:f:N:F:")
-    except getopt.GetoptError as error:
-        print(str(error))
-        print(
-            "Usage: %s -i <Sequence input file1> -a <Sequence input file2> -w WindowSize <int> -d <width> -e <height> -o <bool interactive mode> -help <More info>" %
-            sys.argv[0])
-        sys.exit(2)
-    for o, a in flags:
-        if o == '-h':
-            if rank ==0: printHelp()
-            sys.exit()
-        elif o == '-i':
-            file1 = a
-            joined_file1, name1, inic1, fin1, id1, size1 = join_seq(file1)
-        elif o == '-a':
-            file2 = a
-            joined_file2, name2, inic2, fin2, id2, size2 = join_seq(file2)
-        elif o == '-w':
-            window = int(a)
-        elif o == '-d':
-            width = int(a)
-        elif o == '-e':
-            height = int(a)
-        elif o == '-g':
-            graph = a
-            if (a == 'True') or (a == '1'):
-                graph = True
-            elif (a == 'False') or (a == '0'):
-                graph = False
-            else:
-                if rank ==0: print(rank_msg+" Insert True or 1 if you wish run with interactive mode")
-                sys.exit(3)
-        elif o == '-m':
-            oparallelAligmentDNAption = a.upper()
-            if option == 'SLOW':
-                mode = 0
-            elif option == 'FAST':
-                mode = 1
-            elif option == 'VERY-FAST':
-                mode = 2
-            else:
-                if rank ==0: print(rank_msg+" Insert a valid option for calculation mode")
-                sys.exit(4)
-            if rank ==0: print(rank_msg+" Calculation mode: ", option)
-        elif o == '-f':
-            Filter = a
-            if (a == 'True') or (a == '1'):
-                Filter = True
-            elif (a == 'False') or (a == '0'):
-                Filter = False
-            else:
-                if rank ==0: print(rank_msg+" Insert True or 1 if you wish run with filter mode")
-                sys.exit(3)
-        elif o == '-j':
-            jobSpace = a
-        elif o == '-N':
-            Name = a
-        elif o == '-F':
-            image_format = a.lower()
-            if image_format != 'png' and image_format != 'pdf' and image_format != 'svg':
-                if rank ==0: print(rank_msg+" Insert a valid image format: svg,png or pdf")
-                sys.exit(4)
-            else:
-                image_format = a.lower()
-        elif o == '-p':
-            splitter = a
-        elif o == '-k':
-            kmer = int(a)
+    usage = "usage: python G-SAIP.py -q file.fasta ... [options]"
+    parser = OptionParser(usage=usage)
+
+    parser.add_option('-q','--query',dest='file1',type=str,default=None,help='Query sequence in FASTA format')
+    parser.add_option('-s','--subject',dest='file2',type=str,default=None,help='Subject sequence in FASTA format')
+    parser.add_option('-w','--window',dest='window',type=int,default=None,help='Window size')
+    parser.add_option('-k','--kmer',dest='kmer',type=int,default=3,help='kmer value')
+    parser.add_option('-m','--mode',dest='option',type=str,default=None,help='Calculation score mode')
+    parser.add_option('-i','--width',dest='width',type=int,default=1024,help='Output image width')
+    parser.add_option('-e','--height',dest='height',type=int,default=1024,help='Output image height')
+    parser.add_option('-g','--graphic',dest='graph',type=str,default='FALSE',help='Interactive mode')
+    parser.add_option('-f','--filter',dest='Filter',type=str,default='FALSE',help='Apply default filter')
+    parser.add_option('-n','--name',dest='Name',type=str,default=None,help='Output image name')
+    parser.add_option('-o','--format',dest='image_format',type=str,default='png',help='Specify the output image format')
+
+
+    (options,arguments) = parser.parse_args()
+
+    file1=options.file1
+    file2=options.file2
+    window=options.window
+    kmer=options.kmer
+    option=options.option
+    width=options.width
+    height=options.height
+    graph=options.graph
+    Filter=options.Filter
+    Name=options.Name
+    image_format=options.image_format
+
+
+    size1, size2= 0, 0
+    joined_file1, joined_file2, name1, name2, inic1, inic2, fin1, fin2, id1, id2 = '', '', '', '', None, None, None, None, None, None
+
+    if file1 is not None:
+    	joined_file1, name1, inic1, fin1, id1, size1 = join_seq(file1)
+    else:
+    	print("Please insert at least a Query file in FASTA format")
+    	sys.exit(1)
+
+    if file2 is not None:
+    	joined_file2, name2, inic2, fin2, id2, size2 = join_seq(file2)
 
     if file1 != '' and file2 is None:
         joined_file2, name2, inic2, fin2, id2, size2 = joined_file1, name1, inic1, fin1, id1, size1
+
+    if option is not None:
+        if option.upper() == 'SLOW':
+            mode = 0
+        elif option.upper() == 'FAST':
+            mode = 1
+        elif option.upper() == 'VERY-FAST':
+            mode = 2
+        else:
+            print("Insert a valid option for calculation mode")
+            sys.exit(4)
+        print("Calculation mode: ", option)
+
+    if image_format.lower() != 'png' and image_format.lower() != 'pdf' and image_format.lower() != 'svg':
+        print("Insert a valid image format: svg,png or pdf")
+        sys.exit(4)
+    else:
+        image_format = image_format.lower()
+
+    if (graph.upper() == 'TRUE') or (str(graph) == '1'):
+        graph = True
+    elif (graph.upper() == 'FALSE') or (str(graph) == '0'):
+        graph = False
+    else:
+        print("Insert True or 1 if you wish run with interactive mode")
+        sys.exit(3)
+    
+    if (Filter.upper() == 'TRUE') or (str(Filter) == '1'):
+        Filter = True
+    elif (Filter.upper() == 'FALSE') or (str(Filter) == '0'):
+        Filter = False
+    else:
+        print("Insert True or 1 if you wish run with filter mode")
+        sys.exit(3)
 
     # Here, we define the score calculation mode according to the secuences size. OJO PARA el MANUAL de usuario
     if option is None:
@@ -355,12 +360,12 @@ def main():
         #######################################################################
         #### MPI parallel region
         start_time = time.time()
-        seqs_per_procs = int(n / mpi_procs_size)
+        seqs_per_procs = int(n / threads)
         # execute sequence alignment using MPI
         local_result = dna_parallel_alignment(lengthX, seq1Array, lengthY, seq2Array, seqs_per_procs, strand, kmer, mode, n)
         if rank == 0:
             local_results_dict = {}
-            for r in range(1,size):
+            for r in range(1,threads):
                 data_dict = receive_mpi_msg(deserialize=True)
                 local_results_dict[data_dict['sender']] = data_dict['data']
             # join all partial results in one
