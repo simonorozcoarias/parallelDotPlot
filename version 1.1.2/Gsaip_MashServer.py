@@ -67,8 +67,8 @@ def Distance(ref,subj,sizes_ref,sizes_subj,strand):
     #print(sizes_ref,sizes_subj)
     for i in range(1,len(sizes_subj)+1): #este for itera el archivo del .rank sobre la secuencia más larga.
         #print(i,rank-1)
-        command= "mashmap -r "+ref+"."+str(rank)+" -q "+str(subj)+"."+str(i)+" -t 1 --pi 95 -s 500 -k 5 -f none"+" -o mashmap.temp."+str(rank)+"_"+str(i)
-        #command= "mashmap -q "+ref+"."+str(rank)+" -r "+str(subj)+"."+str(i)+" -t 1 --pi 70 -s 500 -k 3"+" -o mashmap.temp."+str(rank)+
+        command= "mashmap -r "+ref+"."+str(rank)+" -q "+str(subj)+"."+str(i)+" -t 1 --pi 95 -s 500 -f none"+" -o mashmap.temp."+str(rank)+"_"+str(i)
+        #command= "mashmap -r "+ref+"."+str(rank)+" -q "+str(subj)+"."+str(i)+" -t 1 --pi 95 -s 500 -k 3"+" -o mashmap.temp."+str(rank)+"_"+str(i)
         #print(command)
         subprocess.run(command,shell=True)
         # me falta definir el tamaño de la matriz que voy devolver acá.
