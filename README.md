@@ -35,7 +35,7 @@ To execute the graphical aligner you have to run:
 python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20
 ```
 
-if you want to define a specific window size type:
+if you want to define a specific window size, type:
 ```sh
 python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20 -w 500
 ```
