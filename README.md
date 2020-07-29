@@ -18,7 +18,7 @@ This algorithm requieres Python3 and the following packages.
 Requirements can be installed under conda environments as follows:
 
 ```sh
-$ conda install -n G_Align python=3.7
+$ conda create -n G_Align python=3.7
 $ conda activate G_Align
 $ conda install -c anaconda numpy
 $ conda install -c conda-forge matplotlib
