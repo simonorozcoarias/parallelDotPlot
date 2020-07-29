@@ -22,10 +22,7 @@ def printHelp():
     print("      			-g Graphic mode <bool>")
     print("      			-h <Extended information>")
     print("      			-t number of threads <int>")
-    #print("      			-j <>")
-    #print("      			-p <>")
     print("\n")
-    #print("If you require more info about the Parallel Schemes available use \n \n     		")+colored("%s -r" % sys.argv[0],'green')
 
 def seq2array(file, windowSize):
     te = list(SeqIO.parse(file, "fasta"))
@@ -68,7 +65,6 @@ def hammingDistance(seq1, seq2, matScore, misScore):
        length = len(seq1)
     else:
        length = len(seq2)
-    # print("len1 %d, len2 %d"%(len(seq1), len(seq2)))
     mismatches = [1 for x in range(length) if seq1[x] != seq2[x]]
     numMis = sum(mismatches) + abs(len(seq1) - len(seq2)) 
     score = numMis*misScore + (length-sum(mismatches))*matScore
@@ -77,12 +73,6 @@ def hammingDistance(seq1, seq2, matScore, misScore):
     return score
 
 def graphicalAlignment2(width, height, windowSize, name1, name2, graph_flag, result, lengthX, lengthY, threads):
-    #mininum = abs(min(min(result)))
-    #for i in range(len(result)):
-    #   for j in range(len(result[i])):
-    #      result[i][j] += mininum
-    #      if result[i][j] > 255:
-    #          result[i][j] = 255
     resultAveraged = [[(result[x][y]/windowSize) * 256/5*windowSize for y in range(lengthY)] for x in range(lengthX)]
     maxi=max(max(resultAveraged))
     resultAveraged = [[(resultAveraged[x][y]*255) /maxi for y in range(lengthY)] for x in range(lengthX)]
