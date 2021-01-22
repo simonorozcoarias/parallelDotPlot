@@ -32,19 +32,19 @@ Other requirements are installed in python 3.7 distribution.
 To execute the graphical aligner you have to run:
 
 ```sh
-python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20
+mpirun -np 4 python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20
 ```
 
 if you want to define a specific window size, type:
 ```sh
-python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20 -w 500
+mpirun -np 4 python3 graphicalAlignment.py -i file1.fasta -a file2.fasta -t 20 -w 500
 ```
 ### Example
 
 To create a dot-plot of *Homo sapiens* 21 chromosome against itself write:
 
 ```sh
-python3 graphicalAlignment.py -i Chr21_HomoSapiens.fa -a Chr21_HomoSapiens.fa -t 20 -w 41990
+mpirun -np 4 python3 graphicalAlignment.py -i Chr21_HomoSapiens.fa -a Chr21_HomoSapiens.fa -t 20 -w 41990
 ```
 Input file and output image of this line is in Sample_data
 
