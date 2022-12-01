@@ -58,3 +58,7 @@ For more information please write to:
 - johan.pinad@autonoma.edu.co
 - simon.orozco.arias@gmail.com
 
+## Citation
+If you use this software, or a part of it, please cite us as following:
+
+* Piña, J. S., Orozco-Arias, S., Guyot, R., Tabares-Soto, R., Tobón Orozco, N., & Candamil-Cortés, M. S. (2019). Alineamiento gráfico de secuencias a través de programación paralela: un enfoque desde la era postgenómica. Revista Ingeniería Biomédica, 13(26).
